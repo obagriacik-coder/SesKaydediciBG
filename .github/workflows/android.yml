@@ -20,16 +20,14 @@ jobs:
 
       - name: Install SDK packages
         run: |
-          sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2" "cmdline-tools;latest"
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "cmdline-tools;latest"
           yes | sdkmanager --licenses
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        uses: gradle/gradle-build-action@v3
-        with:
-          arguments: assembleDebug
+      - name: Build Debug APK (verbose)
+        run: ./gradlew --no-daemon --stacktrace --info assembleDebug
 
       - name: Upload APK artifact
         if: success()
