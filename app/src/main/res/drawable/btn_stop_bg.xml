@@ -1,30 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?attr/colorControlHighlight">
 
-    <!-- Basılı halde (daha koyu) -->
-    <item android:state_pressed="true">
-        <shape android:shape="rectangle">
-            <solid android:color="@color/primary_dark" />
-            <corners android:radius="50dp" />
-            <padding
-                android:left="16dp"
-                android:top="10dp"
-                android:right="16dp"
-                android:bottom="10dp" />
-        </shape>
-    </item>
-
-    <!-- Normal hali -->
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/primary" />
-            <corners android:radius="50dp" />
+            <corners android:radius="26dp" />
+            <gradient
+                android:startColor="@color/danger"
+                android:endColor="@color/danger_dark"
+                android:angle="90" />
+            <stroke
+                android:width="1dp"
+                android:color="#40FFFFFF" />
             <padding
-                android:left="16dp"
+                android:left="12dp"
                 android:top="10dp"
-                android:right="16dp"
+                android:right="12dp"
                 android:bottom="10dp" />
         </shape>
     </item>
-
-</selector>
+</ripple>
