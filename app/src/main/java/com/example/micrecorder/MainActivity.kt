@@ -6,15 +6,17 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     private val permLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { /* izin sonucu handle edilebilir */ }
+    ) {
+        // izin sonucu burada istersen kontrol edebilirsin
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,30 +29,30 @@ class MainActivity : AppCompatActivity() {
         }
         permLauncher.launch(perms.toTypedArray())
 
-        // activity_main.xml'deki id'ler ile eşleşecek
-        val statusText = findViewById<TextView>(R.id.statusText) // küçük etiket
-        val stateText  = findViewById<TextView>(R.id.stateText)  // büyük durum yazısı
-        val btnStart   = findViewById<Button>(R.id.btnStart)
-        val btnStop    = findViewById<Button>(R.id.btnStop)
+        // ---- UI referansları ----
+        val status = findViewById<TextView>(R.id.txtStatus)
+        val btnStart = findViewById<Button>(R.id.btnStart)
+        val btnStop = findViewById<Button>(R.id.btnStop)
 
-        // Başlangıç metinleri
-        statusText.text = getString(R.string.status_label)
-        stateText.text  = getString(R.string.status_stopped)
+        // Başlangıç metni
+        status.text = "Hazır"
 
+        // Başlat
         btnStart.setOnClickListener {
             val i = Intent(this, RecorderService::class.java).apply {
                 action = RecorderService.ACTION_START
             }
             ContextCompat.startForegroundService(this, i)
-            stateText.text = getString(R.string.status_recording)
+            status.text = "Kayıt: BAŞLADI"
         }
 
+        // Durdur
         btnStop.setOnClickListener {
             val i = Intent(this, RecorderService::class.java).apply {
                 action = RecorderService.ACTION_STOP
             }
             ContextCompat.startForegroundService(this, i)
-            stateText.text = getString(R.string.status_stopped)
+            status.text = "Kayıt: DURDU"
         }
     }
 }
