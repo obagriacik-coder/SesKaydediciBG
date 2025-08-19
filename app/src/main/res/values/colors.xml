@@ -1,10 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- FUTURISTIC THEME COLORS -->
-    <color name="bgDark">#0A0F1E</color>
-    <color name="neonBlue">#00E5FF</color>
-    <color name="neonGreen">#39FF14</color>
-    <color name="neonRed">#FF1744</color>
-    <color name="neonText">#E0F7FA</color>
-    <color name="chipBg">#141C2F</color>
-    <color name="white70">#B3FFFFFF</color>
+
+    <!-- Ana renkler -->
+    <color name="primary">#6200EE</color>           <!-- Mor -->
+    <color name="primary_variant">#3700B3</color>   <!-- Koyu mor -->
+    <color name="secondary">#03DAC6</color>         <!-- Turkuaz -->
+    <color name="accent">#FF9800</color>            <!-- Turuncu -->
+
+    <!-- Durum renkleri -->
+    <color name="danger">#F44336</color>            <!-- Kırmızı (hata) -->
+    <color name="success">#4CAF50</color>           <!-- Yeşil (başarı) -->
+    <color name="warning">#FFC107</color>           <!-- Sarı (uyarı) -->
+
+    <!-- Metin renkleri -->
+    <color name="text_primary">#212121</color>      <!-- Ana metin siyaha yakın -->
+    <color name="text_secondary">#757575</color>    <!-- İkincil metin gri -->
+    <color name="text_inverse">#FFFFFF</color>      <!-- Ters metin beyaz -->
+
+    <!-- Arka plan renkleri -->
+    <color name="background">#FFFFFF</color>        <!-- Beyaz arka plan -->
+    <color name="surface">#F5F5F5</color>           <!-- Açık gri yüzey -->
+
 </resources>
