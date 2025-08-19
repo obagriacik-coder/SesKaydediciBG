@@ -1,25 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Temel Renkler -->
-    <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
+    <!-- Arka planlar -->
+    <color name="bg_dark">#101217</color>
+    <color name="panel">#161A20</color>
 
-    <!-- Tema Renkleri -->
-    <color name="primary">#6200EE</color>
-    <color name="primary_dark">#3700B3</color>
-    <color name="accent">#03DAC5</color>
+    <!-- Metinler -->
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B5BDC9</color>
 
-    <!-- Ekstra Renkler -->
-    <color name="danger">#FF5252</color>
-    <color name="success">#4CAF50</color>
-    <color name="warning">#FFC107</color>
-    <color name="info">#2196F3</color>
+    <!-- Vurgu -->
+    <color name="accent">#00E0FF</color>
 
-    <!-- Eksik Renkler (Hata verenler) -->
-    <color name="neon_red_glow">#FF1744</color>
-    <color name="neon_red">#D50000</color>
-    <color name="bg_dark">#121212</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B3B3B3</color>
-    <color name="panel">#1E1E1E</color>
+    <!-- Başlat (yeşil tonları) -->
+    <color name="success">#34C759</color>
+    <color name="success_dark">#2E7D32</color>
+
+    <!-- Durdur (kırmızı tonları) -->
+    <color name="danger">#FF3B30</color>
+    <color name="danger_dark">#C62828</color>
 </resources>
