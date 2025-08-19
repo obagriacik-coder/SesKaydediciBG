@@ -1,24 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Arka plan -->
+    <color name="bg_dark">#0B0F14</color>
+    <color name="panel">#0E151C</color>
 
-    <!-- Ana renkler -->
-    <color name="primary">#6200EE</color>           <!-- Mor -->
-    <color name="primary_variant">#3700B3</color>   <!-- Koyu mor -->
-    <color name="secondary">#03DAC6</color>         <!-- Turkuaz -->
-    <color name="accent">#FF9800</color>            <!-- Turuncu -->
+    <!-- Neon renkler -->
+    <color name="neon_cyan">#00E5FF</color>
+    <color name="neon_cyan_glow">#6600E5FF</color>  <!-- %40 opak -->
+    <color name="neon_green">#00FF7A</color>
+    <color name="neon_green_glow">#6600FF7A</color>
+    <color name="neon_red">#FF3B30</color>
+    <color name="neon_red_glow">#66FF3B30</color>
 
-    <!-- Durum renkleri -->
-    <color name="danger">#F44336</color>            <!-- Kırmızı (hata) -->
-    <color name="success">#4CAF50</color>           <!-- Yeşil (başarı) -->
-    <color name="warning">#FFC107</color>           <!-- Sarı (uyarı) -->
-
-    <!-- Metin renkleri -->
-    <color name="text_primary">#212121</color>      <!-- Ana metin siyaha yakın -->
-    <color name="text_secondary">#757575</color>    <!-- İkincil metin gri -->
-    <color name="text_inverse">#FFFFFF</color>      <!-- Ters metin beyaz -->
-
-    <!-- Arka plan renkleri -->
-    <color name="background">#FFFFFF</color>        <!-- Beyaz arka plan -->
-    <color name="surface">#F5F5F5</color>           <!-- Açık gri yüzey -->
-
+    <!-- Metin -->
+    <color name="text_primary">#EFFFFF</color>
+    <color name="text_secondary">#77EFFFFF</color>
+    <color name="text_inverse">#000000</color>
 </resources>
