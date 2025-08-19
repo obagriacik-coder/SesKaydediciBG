@@ -1,162 +1,129 @@
 package com.example.micrecorder
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
+import android.app.*
 import android.content.ContentValues
-import android.content.Context
 import android.content.Intent
 import android.media.MediaRecorder
-import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
 import android.provider.MediaStore
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.Locale
+import java.util.*
 
 class RecorderService : Service() {
 
-    companion object {
-        const val ACTION_START = "com.example.micrecorder.START"
-        const val ACTION_STOP  = "com.example.micrecorder.STOP"
-        private const val CH_ID = "recorder_ch"
-        private const val CH_NAME = "Kayıt"
-        private const val NOTIF_ID = 1001
-    }
-
     private var recorder: MediaRecorder? = null
-    private var lastOutputUri: Uri? = null
-
-    override fun onBind(intent: Intent?): IBinder? = null
+    private var recording = false
+    private var savedUri = ""
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startRecording()
-            ACTION_STOP  -> stopRecording()
+            "ACTION_START" -> startRecording()
+            "ACTION_STOP"  -> stopRecording()
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
+    override fun onBind(intent: Intent?): IBinder? = null
+
     private fun startRecording() {
-        if (recorder != null) return
+        if (recording) return
+        createNotification()
 
-        createChannelIfNeeded()
-        startForeground(NOTIF_ID, buildNotification("Kayıt başlatılıyor…"))
+        val fileName = "BG_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + ".m4a"
 
-        val fileStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis())
-        val displayName = "REC_${fileStamp}.m4a"
+        val outputFd = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+: MediaStore → Music/MicRecorder
+            val values = ContentValues().apply {
+                put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+                put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/MicRecorder")
+                put(MediaStore.Audio.Media.IS_PENDING, 1)
+            }
+            val uri = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+            savedUri = uri?.toString().orEmpty()
+            contentResolver.openFileDescriptor(uri!!, "w")!!.fileDescriptor.also {
+                // IS_PENDING=0 ile yayına al
+                values.clear(); values.put(MediaStore.Audio.Media.IS_PENDING, 0)
+                contentResolver.update(uri, values, null, null)
+            }
+        } else {
+            // Android 9 ve altı: /Music/MicRecorder klasörü
+            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "MicRecorder")
+            if (!dir.exists()) dir.mkdirs()
+            val outFile = File(dir, fileName)
+            outFile.absolutePath.also { savedUri = it }
+            @Suppress("DEPRECATION")
+            outFile
+        }
 
-        try {
-            val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(this) else MediaRecorder()
-            r.setAudioSource(MediaRecorder.AudioSource.MIC)
-            r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            r.setAudioEncodingBitRate(128_000)
-            r.setAudioSamplingRate(44_100)
+        recorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioSamplingRate(44100)
+            setAudioEncodingBitRate(128000)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10+: MediaStore -> Music/Recordings
-                val values = ContentValues().apply {
-                    put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-                    put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
-                    put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/Recordings")
-                    put(MediaStore.Audio.Media.IS_PENDING, 1)
-                    put(MediaStore.Audio.Media.IS_MUSIC, 1)
-                }
-                val uri = contentResolver.insert(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values
-                ) ?: throw IllegalStateException("MediaStore insert failed")
-                lastOutputUri = uri
-
-                val pfd = contentResolver.openFileDescriptor(uri, "w")
-                    ?: throw IllegalStateException("openFileDescriptor failed")
-                r.setOutputFile(pfd.fileDescriptor)
-                pfd.close()
+                setOutputFile(outputFd)
             } else {
-                // Android 9 ve altı: /Music/Recordings/REC_*.m4a
-                val music = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
-                val dir = File(music, "Recordings").apply { mkdirs() }
-                val out = File(dir, displayName)
-                r.setOutputFile(out.absolutePath)
+                @Suppress("DEPRECATION")
+                setOutputFile(savedUri)
             }
 
-            r.prepare()
-            r.start()
-            recorder = r
-
-            updateNotification("Kayıt devam ediyor…")
-        } catch (e: Exception) {
-            Log.e("RecorderService", "startRecording error", e)
-            cleanupFailedStart()
+            prepare()
+            start()
         }
+        recording = true
     }
 
     private fun stopRecording() {
+        if (!recording) { stopForeground(true); stopSelf(); return }
         try {
             recorder?.apply {
                 stop()
                 reset()
                 release()
             }
-        } catch (e: Exception) {
-            Log.w("RecorderService", "stopRecording warning", e)
-        } finally {
-            recorder = null
-            // Android 10+: IS_PENDING=0 yap ki Dosyalar/Müzik uygulamalarında görünsün
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                lastOutputUri?.let { uri ->
-                    try {
-                        val values = ContentValues().apply {
-                            put(MediaStore.Audio.Media.IS_PENDING, 0)
-                        }
-                        contentResolver.update(uri, values, null, null)
-                    } catch (_: Exception) {}
-                }
-            }
-            lastOutputUri = null
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
-        }
-    }
-
-    private fun cleanupFailedStart() {
-        // Başlatma başarısızsa oluşturulmuş kaydı sil
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            lastOutputUri?.let {
-                try { contentResolver.delete(it, null, null) } catch (_: Exception) {}
-            }
-        }
-        lastOutputUri = null
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        } catch (_: Exception) { /* yut */ }
+        recorder = null
+        recording = false
+        stopForeground(true)
         stopSelf()
     }
 
-    private fun createChannelIfNeeded() {
+    private fun createNotification() {
+        val channelId = "rec_ch"
+        val channelName = "Mikrofon Kaydı"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (nm.getNotificationChannel(CH_ID) == null) {
-                val ch = NotificationChannel(CH_ID, CH_NAME, NotificationManager.IMPORTANCE_LOW)
-                nm.createNotificationChannel(ch)
-            }
+            val ch = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
         }
-    }
 
-    private fun buildNotification(text: String): Notification {
-        return NotificationCompat.Builder(this, CH_ID)
-            .setSmallIcon(R.drawable.ic_mic) // drawable/ic_mic.xml mevcut olmalı
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText(text)
+        val stopIntent = Intent(this, RecorderService::class.java).apply { action = "ACTION_STOP" }
+        val stopPi = PendingIntent.getService(
+            this, 1, stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
+        )
+
+        val notif = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.presence_audio_online)
+            .setContentTitle("Kayıt sürüyor…")
+            .setContentText("Müzik/MicRecorder klasörüne kaydediliyor")
             .setOngoing(true)
+            .addAction(0, "Durdur", stopPi)
             .build()
+
+        startForeground(1123, notif)
     }
 
-    private fun updateNotification(text: String) {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NOTIF_ID, buildNotification(text))
+    override fun onDestroy() {
+        super.onDestroy()
+        try { recorder?.release() } catch (_: Exception) {}
+        recorder = null
+        recording = false
     }
 }
