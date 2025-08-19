@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Butona basıldığında -->
+    <!-- Basılı halde (daha koyu) -->
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
-            <solid android:color="@color/danger_dark" />
+            <solid android:color="@color/primary_dark" />
             <corners android:radius="50dp" />
             <padding
                 android:left="16dp"
@@ -17,7 +17,7 @@
     <!-- Normal hali -->
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/danger" />
+            <solid android:color="@color/primary" />
             <corners android:radius="50dp" />
             <padding
                 android:left="16dp"
