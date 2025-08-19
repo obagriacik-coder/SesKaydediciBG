@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Uygulama Teması -->
+    <style name="Theme.SesKaydediciBG" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- İsteğe bağlı temel renkler -->
+        <item name="colorPrimary">@android:color/holo_green_light</item>
+        <item name="colorSecondary">@android:color/holo_red_light</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+    </style>
+
+</resources>
