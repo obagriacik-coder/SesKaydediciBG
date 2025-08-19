@@ -14,29 +14,28 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // Vector desteği (gerekirse)
-        vectorDrawables { useSupportLibrary = true }
+        vectorDrawables {
+            useSupportLibrary = true
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            minifyEnabled false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
         debug {
-            isMinifyEnabled = false
+            minifyEnabled false
         }
     }
 
-    // >>> ViewBinding'i açtık (Binding hataları bunun yüzündendi)
     buildFeatures {
         viewBinding = true
     }
 
-    // Java/Kotlin derleyici ayarları
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
