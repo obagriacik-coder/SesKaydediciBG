@@ -4,51 +4,67 @@ import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.widget.Button
-import android.widget.TextView
-import androidx.activity.ComponentActivity
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.example.micrecorder.databinding.ActivityMainBinding
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
-    private val permLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { /* izin sonucu burada gerek yok */ }
+    private lateinit var b: ActivityMainBinding
+
+    // Çoklu izin launcher
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            val allGranted = grants.all { it.value }
+            if (allGranted) {
+                startRecorderService()
+            } else {
+                Toast.makeText(this, getString(R.string.perm_required), Toast.LENGTH_SHORT).show()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        b = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(b.root)
 
-        // İzinleri iste
-        val perms = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        // Başlangıç statüsü
+        b.statusText.text = getString(R.string.status_idle)
+
+        // Başlat
+        b.startButton.setOnClickListener {
+            requestNeededPermissionsAndStart()
+        }
+
+        // Durdur
+        b.stopButton.setOnClickListener {
+            stopService(Intent(this, RecorderService::class.java))
+            b.statusText.text = getString(R.string.status_stopped)
+        }
+    }
+
+    private fun requestNeededPermissionsAndStart() {
+        val req = mutableListOf(Manifest.permission.RECORD_AUDIO)
+
+        // Android 13+ bildirim izni (servis bildirimi için)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Bildirim izni (Android 13+)
-            perms.add(Manifest.permission.POST_NOTIFICATIONS)
-            // (İsteğe bağlı) kayıtları görebilmek için medya okuma izni
-            // perms.add(Manifest.permission.READ_MEDIA_AUDIO)
+            req += Manifest.permission.POST_NOTIFICATIONS
         }
-        permLauncher.launch(perms.toTypedArray())
-
-        // --- VIEW'LER ---
-        val statusText = findViewById<TextView>(R.id.txtStatus)
-        val btnStart = findViewById<Button>(R.id.btnStart)
-        val btnStop = findViewById<Button>(R.id.btnStop)
-
-        btnStart.setOnClickListener {
-            val i = Intent(this, RecorderService::class.java).apply {
-                action = RecorderService.ACTION_START
-            }
-            ContextCompat.startForegroundService(this, i)
-            statusText.text = "Kayıt: BAŞLADI"
+        // Android 9 ve altı için harici depolama yazma izni
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            req += Manifest.permission.WRITE_EXTERNAL_STORAGE
+            req += Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-        btnStop.setOnClickListener {
-            val i = Intent(this, RecorderService::class.java).apply {
-                action = RecorderService.ACTION_STOP
-            }
-            ContextCompat.startForegroundService(this, i)
-            statusText.text = "Kayıt: DURDU"
-        }
+        permissionLauncher.launch(req.toTypedArray())
+    }
+
+    private fun startRecorderService() {
+        val intent = Intent(this, RecorderService::class.java)
+        // Foreground service’i güvenli başlat
+        ContextCompat.startForegroundService(this, intent)
+        b.statusText.text = getString(R.string.status_recording)
     }
 }
