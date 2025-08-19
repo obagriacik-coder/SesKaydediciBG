@@ -6,15 +6,15 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val permLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { /* izin sonucu */ }
+    ) { /* izin sonucu handle edilebilir */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,16 +27,22 @@ class MainActivity : ComponentActivity() {
         }
         permLauncher.launch(perms.toTypedArray())
 
-        val status = findViewById<TextView>(R.id.txtStatus)
-        val btnStart = findViewById<Button>(R.id.btnStart)
-        val btnStop = findViewById<Button>(R.id.btnStop)
+        // activity_main.xml'deki id'ler ile eşleşecek
+        val statusText = findViewById<TextView>(R.id.statusText) // küçük etiket
+        val stateText  = findViewById<TextView>(R.id.stateText)  // büyük durum yazısı
+        val btnStart   = findViewById<Button>(R.id.btnStart)
+        val btnStop    = findViewById<Button>(R.id.btnStop)
+
+        // Başlangıç metinleri
+        statusText.text = getString(R.string.status_label)
+        stateText.text  = getString(R.string.status_stopped)
 
         btnStart.setOnClickListener {
             val i = Intent(this, RecorderService::class.java).apply {
                 action = RecorderService.ACTION_START
             }
             ContextCompat.startForegroundService(this, i)
-            status.text = "Kayıt: BAŞLADI"
+            stateText.text = getString(R.string.status_recording)
         }
 
         btnStop.setOnClickListener {
@@ -44,7 +50,7 @@ class MainActivity : ComponentActivity() {
                 action = RecorderService.ACTION_STOP
             }
             ContextCompat.startForegroundService(this, i)
-            status.text = "Kayıt: DURDU"
+            stateText.text = getString(R.string.status_stopped)
         }
     }
 }
