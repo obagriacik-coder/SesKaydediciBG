@@ -14,9 +14,7 @@ class MainActivity : ComponentActivity() {
 
     private val permLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        // izin sonucu burada istersen kontrol edebilirsin
-    }
+    ) { /* izin sonucu burada gerek yok */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,34 +23,32 @@ class MainActivity : ComponentActivity() {
         // İzinleri iste
         val perms = mutableListOf(Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Bildirim izni (Android 13+)
             perms.add(Manifest.permission.POST_NOTIFICATIONS)
+            // (İsteğe bağlı) kayıtları görebilmek için medya okuma izni
+            // perms.add(Manifest.permission.READ_MEDIA_AUDIO)
         }
         permLauncher.launch(perms.toTypedArray())
 
-        // ---- UI referansları ----
-        val status = findViewById<TextView>(R.id.txtStatus)
+        // --- VIEW'LER ---
+        val statusText = findViewById<TextView>(R.id.txtStatus)
         val btnStart = findViewById<Button>(R.id.btnStart)
         val btnStop = findViewById<Button>(R.id.btnStop)
 
-        // Başlangıç metni
-        status.text = "Hazır"
-
-        // Başlat
         btnStart.setOnClickListener {
             val i = Intent(this, RecorderService::class.java).apply {
                 action = RecorderService.ACTION_START
             }
             ContextCompat.startForegroundService(this, i)
-            status.text = "Kayıt: BAŞLADI"
+            statusText.text = "Kayıt: BAŞLADI"
         }
 
-        // Durdur
         btnStop.setOnClickListener {
             val i = Intent(this, RecorderService::class.java).apply {
                 action = RecorderService.ACTION_STOP
             }
             ContextCompat.startForegroundService(this, i)
-            status.text = "Kayıt: DURDU"
+            statusText.text = "Kayıt: DURDU"
         }
     }
 }
