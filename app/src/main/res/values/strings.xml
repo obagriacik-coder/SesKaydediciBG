@@ -1,3 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Ses Kaydedici BG</string>
+    <string name="status_label">Kayıt:</string>
+    <string name="status_stopped">DURDU</string>
+    <string name="status_recording">KAYITTA</string>
+
+    <!-- Alt imza -->
+    <string name="bgrck_signature">BGRCK YAZILIM</string>
+
+    <!-- Buton yazıları (İngilizce) -->
+    <string name="btn_start">START</string>
+    <string name="btn_stop">STOP</string>
 </resources>
