@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Ses Kaydedici</string>
     <string name="untitled">Recorder icon</string>
+    <string name="brand_footer">BGRCK YAZILIM</string>
 </resources>
