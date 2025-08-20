@@ -5,64 +5,61 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.example.micrecorder.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var statusText: TextView
+    private lateinit var startBtn: Button
+    private lateinit var stopBtn: Button
 
-    private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
-            // izin sonucu geldi; burada ekstra bir şey yapmaya gerek yok
-        }
+    private val permLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ -> /* kullanıcı yanıtladı */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_main)
+
+        statusText = findViewById(R.id.statusText)
+        startBtn   = findViewById(R.id.startButton)
+        stopBtn    = findViewById(R.id.stopButton)
 
         requestNeededPermissions()
 
-        binding.startButton.setOnClickListener {
-            binding.statusText.text = "Kayıt başlatılıyor…"
-            val intent = Intent(this, RecorderService::class.java).apply {
-                action = "ACTION_START"
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                ContextCompat.startForegroundService(this, intent)
-            } else {
-                startService(intent)
-            }
+        startBtn.setOnClickListener {
+            statusText.text = "Kayıt başlatılıyor…"
+            val i = Intent(this, RecorderService::class.java).setAction(RecorderService.ACTION_START)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                ContextCompat.startForegroundService(this, i)
+            else
+                startService(i)
+            Toast.makeText(this, "Kayıt başladı", Toast.LENGTH_SHORT).show()
         }
 
-        binding.stopButton.setOnClickListener {
-            binding.statusText.text = "Kayıt durduruluyor…"
-            val intent = Intent(this, RecorderService::class.java).apply {
-                action = "ACTION_STOP"
-            }
-            startService(intent)
+        stopBtn.setOnClickListener {
+            statusText.text = "Kayıt durduruluyor…"
+            val i = Intent(this, RecorderService::class.java).setAction(RecorderService.ACTION_STOP)
+            startService(i)
+            Toast.makeText(this, "Kayıt durduruldu", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun requestNeededPermissions() {
         val perms = buildList {
             add(Manifest.permission.RECORD_AUDIO)
-            add(Manifest.permission.FOREGROUND_SERVICE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
                 add(Manifest.permission.POST_NOTIFICATIONS)
-                add(Manifest.permission.READ_MEDIA_AUDIO)
-            } else {
-                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
         }.toTypedArray()
 
         val need = perms.any {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (need) permissionLauncher.launch(perms)
+        if (need) permLauncher.launch(perms)
     }
 }
