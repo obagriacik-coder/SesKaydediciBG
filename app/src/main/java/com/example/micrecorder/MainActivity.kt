@@ -23,8 +23,6 @@ import java.io.OutputStream
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-
-    // Servis çıktısı için geçici/özel dosya (uygulama klasörü)
     private var currentOutputFile: File? = null
     private var isRecording = false
 
@@ -37,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         requestNeededPermissions()
-        checkBatteryOptimization()  // Doze istisnası iste
+        checkBatteryOptimization()
 
         binding.startButton.setOnClickListener {
             if (isRecording) return@setOnClickListener
@@ -50,7 +48,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---- İzinler ----
     private fun requestNeededPermissions() {
         val perms = buildList {
             add(Manifest.permission.RECORD_AUDIO)
@@ -70,7 +67,6 @@ class MainActivity : AppCompatActivity() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    // ---- Doze / Pil Optimizasyonu ----
     private fun checkBatteryOptimization() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val pm = getSystemService(POWER_SERVICE) as PowerManager
@@ -89,7 +85,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---- Kayıt Başlat/Durdur (Foreground Service) ----
     private fun startForegroundRecording() {
         if (!hasRecordPermission()) {
             Toast.makeText(this, "Mikrofon izni gerekiyor", Toast.LENGTH_SHORT).show()
@@ -98,19 +93,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         val fileName = "rec_${System.currentTimeMillis()}.m4a"
-        // Uygulamanın kendi Müzik klasörü (güvenli; path verebiliriz)
         val base = getExternalFilesDir(Environment.DIRECTORY_MUSIC)
         val dir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
         val out = File(dir, fileName)
 
         currentOutputFile = out
 
-        // VOICE_RECOGNITION denemek isterseniz 3. parametreyi true yapabilirsiniz
-        RecorderService.start(
-            this,
-            outputPath = out.absolutePath,
-            useVoiceRecognition = false
-        )
+        // 🔴 ÖNEMLİ: Java fonksiyonu olduğu için named argument YOK
+        RecorderService.start(this, out.absolutePath, false)
 
         isRecording = true
         binding.statusText.text = "Kayıt başladı: $fileName (arka planda sürüyor)"
@@ -123,8 +113,6 @@ class MainActivity : AppCompatActivity() {
         binding.statusText.text = "Kayıt durduruluyor..."
         Toast.makeText(this, "Kayıt durduruluyor", Toast.LENGTH_SHORT).show()
 
-        // Servis kapanıp dosya serbest kaldıktan sonra kullanıcı erişebilsin diye
-        // Android 10+ için MediaStore'a kopyala (Music/SesKaydediciBG)
         val src = currentOutputFile
         currentOutputFile = null
 
@@ -144,7 +132,6 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Kopyalama hatası", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                // Android 9 ve altı: doğrudan public Music klasörüne taşı
                 try {
                     val base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
                     val dstDir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
@@ -160,7 +147,6 @@ class MainActivity : AppCompatActivity() {
         binding.statusText.text = "Kayıt bekleniyor..."
     }
 
-    // ---- MediaStore yardımcıları (Android 10+) ----
     private fun insertIntoPublicMusic(displayName: String): Uri? {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
