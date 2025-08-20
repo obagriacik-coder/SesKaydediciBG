@@ -72,9 +72,7 @@ public class RecorderService extends Service {
 
     @Nullable
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 
     @Override
     public void onDestroy() {
@@ -98,7 +96,7 @@ public class RecorderService extends Service {
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         recorder.setAudioSamplingRate(44100);
-        recorder.setAudioEncodingBitRate(96000);
+        recorder.setAudioEncodingBitRate(128000); // ← 128 kbps (uyumluluk için)
         recorder.setAudioChannels(1);
 
         if (outputPath != null) {
@@ -117,10 +115,7 @@ public class RecorderService extends Service {
     private void stopRecording() {
         if (recorder != null) {
             try { recorder.stop(); } catch (Exception ignored) {}
-            try {
-                recorder.reset();
-                recorder.release();
-            } catch (Exception ignored) {}
+            try { recorder.reset(); recorder.release(); } catch (Exception ignored) {}
             recorder = null;
         }
     }
@@ -157,9 +152,7 @@ public class RecorderService extends Service {
     private static void createNotificationChannelIfNeeded(Context ctx) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel ch = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Kayıt Kanalı",
-                    NotificationManager.IMPORTANCE_LOW
+                    CHANNEL_ID, "Kayıt Kanalı", NotificationManager.IMPORTANCE_LOW
             );
             ch.setDescription("Arka plan ses kaydı için bildirim kanalı");
             NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
