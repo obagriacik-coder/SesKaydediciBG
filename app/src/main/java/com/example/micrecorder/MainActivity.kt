@@ -8,6 +8,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.MediaStore
 import android.provider.Settings
@@ -23,6 +25,8 @@ import java.io.OutputStream
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    // Servisin yazdığı geçici/özel dosya (app özel Music klasörü)
     private var currentOutputFile: File? = null
     private var isRecording = false
 
@@ -41,12 +45,14 @@ class MainActivity : AppCompatActivity() {
             if (isRecording) return@setOnClickListener
             startForegroundRecording()
         }
+
         binding.stopButton.setOnClickListener {
             if (!isRecording) return@setOnClickListener
             stopForegroundRecording()
         }
     }
 
+    // ---------- İzinler ----------
     private fun requestNeededPermissions() {
         val perms = buildList {
             add(Manifest.permission.RECORD_AUDIO)
@@ -66,6 +72,7 @@ class MainActivity : AppCompatActivity() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    // ---------- Doze / Pil Optimizasyonu ----------
     private fun checkBatteryOptimization() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val pm = getSystemService(POWER_SERVICE) as PowerManager
@@ -82,39 +89,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ---------- Kayıt Başlat/Durdur ----------
     private fun startForegroundRecording() {
         if (!hasRecordPermission()) {
             Toast.makeText(this, "Mikrofon izni gerekiyor", Toast.LENGTH_SHORT).show()
-            requestNeededPermissions(); return
+            requestNeededPermissions()
+            return
         }
 
-        val fileName = "rec_${System.currentTimeMillis()}.m4a" // AAC/M4A
+        // AAC/M4A için dosya adı
+        val fileName = "rec_${System.currentTimeMillis()}.m4a"
+
+        // App’in kendi Music klasörü (path verebileceğimiz güvenli alan)
         val base = getExternalFilesDir(Environment.DIRECTORY_MUSIC)
         val dir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
         val out = File(dir, fileName)
         currentOutputFile = out
 
-        // Java fonksiyonu: named arg yok
+        // Java fonksiyonu: named argument YOK
+        // VOICE_RECOGNITION denemek istersen son parametreyi true yapabilirsin
         RecorderService.start(this, out.absolutePath, false)
 
         isRecording = true
         binding.statusText.text = "Kayıt başladı: $fileName (arka planda)"
-        Toast.makeText(this, "Kayıt başladı (kilitte de devam eder)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Kayıt başladı (ekran kilidinde de devam eder)", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopForegroundRecording() {
+        // 1) Servise Durdur talebi gönder (RecorderService stopRecording + finalize yapıyor)
         RecorderService.stop(this)
+
+        // UI güncelle
         isRecording = false
         binding.statusText.text = "Kayıt durduruluyor..."
         Toast.makeText(this, "Kayıt durduruluyor", Toast.LENGTH_SHORT).show()
 
+        // 2) Servisin dosyayı finalize etmesine küçük bir zaman tanı (UI'ı kilitlemeden)
         val src = currentOutputFile
         currentOutputFile = null
 
-        if (src != null) {
-            // MP4/M4A'da moov atomu için kapanmayı bekle
+        if (src == null) {
+            binding.statusText.text = "Kayıt bekleniyor..."
+            return
+        }
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            // 3) Dosyanın boyutu sabitlenene kadar bekle (moov atomu / flush güvenliği)
             waitForFileFinalized(src)
 
+            // 4) Herkese açık Music klasörüne taşı/kopyala
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
                     val publicUri = insertIntoPublicMusic(src.name)
@@ -137,15 +160,16 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Music/SesKaydediciBG içine kopyalandı", Toast.LENGTH_SHORT).show()
                 } catch (_: Exception) {}
             }
-        }
-        binding.statusText.text = "Kayıt bekleniyor..."
+
+            binding.statusText.text = "Kayıt bekleniyor..."
+        }, /*servis finalize tamponu*/ 250)
     }
 
-    // ---- MediaStore helpers (Android 10+) ----
+    // ---------- MediaStore yardımcıları (Android 10+) ----------
     private fun insertIntoPublicMusic(displayName: String): Uri? {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-            // M4A için daha uyumlu MIME
+            // AAC/M4A için daha uyumlu MIME
             put(MediaStore.Audio.Media.MIME_TYPE, "audio/m4a")
             put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/SesKaydediciBG")
             put(MediaStore.Audio.Media.IS_PENDING, 1)
@@ -166,7 +190,7 @@ class MainActivity : AppCompatActivity() {
         contentResolver.update(uri, values, null, null)
     }
 
-    // Dosya kapanmasını bekle: boyut iki kez üst üste sabitse tamam
+    // ---------- Finalize bekleme: boyut iki ölçümde sabitlenene dek bekle ----------
     private fun waitForFileFinalized(f: File) {
         var last = -1L
         var same = 0
