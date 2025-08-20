@@ -22,7 +22,7 @@
         app:layout_constraintBottom_toTopOf="@id/recIcon"
         android:layout_marginBottom="12dp" />
 
-    <!-- Recorder amblemi: @drawable/rec_logo (kayıtta görünür) -->
+    <!-- Recorder amblemi: rec_logo.png (kayıtta görünür) -->
     <ImageView
         android:id="@+id/recIcon"
         android:layout_width="96dp"
