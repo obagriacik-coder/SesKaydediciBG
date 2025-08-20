@@ -1,10 +1,12 @@
 package com.example.micrecorder
 
 import android.Manifest
-import android.content.pm.PackageManager
+import android.content.ContentValues
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -15,78 +17,124 @@ import java.io.File
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-
     private var recorder: MediaRecorder? = null
     private var isRecording = false
+    private var onStopRecording: (() -> Unit)? = null
 
-    private val micPermission = Manifest.permission.RECORD_AUDIO
-    private val askMicPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) startRecording()
-            else Toast.makeText(this, "Mikrofon izni gerekli!", Toast.LENGTH_SHORT).show()
-        }
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Başlat
+        requestNeededPermissions()
+
         binding.startButton.setOnClickListener {
-            if (!isRecording) {
-                checkMicAndStart()
-            } else {
-                Toast.makeText(this, "Zaten kayıt yapılıyor", Toast.LENGTH_SHORT).show()
-            }
+            if (isRecording) return@setOnClickListener
+            startRecording()
         }
 
-        // Durdur
         binding.stopButton.setOnClickListener {
-            if (isRecording) stopRecording()
-            else Toast.makeText(this, "Şu an aktif kayıt yok", Toast.LENGTH_SHORT).show()
+            if (!isRecording) return@setOnClickListener
+            stopRecording()
         }
     }
 
-    private fun checkMicAndStart() {
-        when {
-            ContextCompat.checkSelfPermission(this, micPermission) == PackageManager.PERMISSION_GRANTED ->
-                startRecording()
-
-            shouldShowRequestPermissionRationale(micPermission) -> {
-                Toast.makeText(this, "Kayıt için mikrofon izni gerekli.", Toast.LENGTH_SHORT).show()
-                askMicPermission.launch(micPermission)
+    private fun requestNeededPermissions() {
+        val perms = buildList {
+            add(Manifest.permission.RECORD_AUDIO)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+                add(Manifest.permission.READ_MEDIA_AUDIO) // okuma için; yazma MediaStore ile
+            } else {
+                add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                add(Manifest.permission.READ_EXTERNAL_STORAGE)
             }
-
-            else -> askMicPermission.launch(micPermission)
-        }
+        }.toTypedArray()
+        permissionLauncher.launch(perms)
     }
 
     private fun startRecording() {
-        // Uygulamanın kendi klasörü: Android/data/<package>/files/Recordings
-        val dir = File(getExternalFilesDir(null), "Recordings").apply { mkdirs() }
-        val outFile = File(dir, "rec_${System.currentTimeMillis()}.m4a")
+        val fileName = "rec_${System.currentTimeMillis()}.m4a"
 
-        recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else MediaRecorder()
-
-        try {
-            recorder?.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4) // .m4a için MPEG_4 + AAC
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128_000)
-                setAudioSamplingRate(44_100)
-                setOutputFile(outFile.absolutePath)
-                prepare()
-                start()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ : MediaStore -> Music/SesKaydediciBG
+            val values = ContentValues().apply {
+                put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+                put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/SesKaydediciBG")
+                put(MediaStore.Audio.Media.IS_PENDING, 1)
             }
-            isRecording = true
-            binding.statusText.text = "Kayıt başladı: ${outFile.name}"
-            Toast.makeText(this, "Kayıt başladı", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            binding.statusText.text = "Kayıt başlatılamadı"
-            Toast.makeText(this, "Kayıt başlatılamadı!", Toast.LENGTH_SHORT).show()
-            cleanupRecorder()
+            val uri = contentResolver.insert(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values
+            ) ?: run {
+                Toast.makeText(this, "MediaStore'a yazılamadı!", Toast.LENGTH_SHORT).show()
+                return
+            }
+            val pfd = contentResolver.openFileDescriptor(uri, "w") ?: run {
+                Toast.makeText(this, "Dosya açılamadı!", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else MediaRecorder()
+            try {
+                recorder?.apply {
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setAudioEncodingBitRate(128_000)
+                    setAudioSamplingRate(44_100)
+                    setOutputFile(pfd.fileDescriptor)
+                    prepare()
+                    start()
+                }
+                isRecording = true
+                binding.statusText.text = "Kayıt başladı: $fileName"
+                Toast.makeText(this, "Müzik/SesKaydediciBG içine kaydediliyor", Toast.LENGTH_SHORT).show()
+
+                onStopRecording = {
+                    try {
+                        pfd.close()
+                        values.clear()
+                        values.put(MediaStore.Audio.Media.IS_PENDING, 0)
+                        contentResolver.update(uri, values, null, null)
+                    } catch (_: Exception) { }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(this, "Kayıt başlatılamadı!", Toast.LENGTH_SHORT).show()
+                onStopRecording = null
+                recorder?.release(); recorder = null
+            }
+        } else {
+            // Android 9 ve altı: /Music/SesKaydediciBG
+            val base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+            val dir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
+            val out = File(dir, fileName)
+
+            recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else MediaRecorder()
+            try {
+                recorder?.apply {
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setAudioEncodingBitRate(128_000)
+                    setAudioSamplingRate(44_100)
+                    setOutputFile(out.absolutePath)
+                    prepare()
+                    start()
+                }
+                isRecording = true
+                binding.statusText.text = "Kayıt başladı: ${out.name}"
+                Toast.makeText(this, "Müzik/SesKaydediciBG içine kaydediliyor", Toast.LENGTH_SHORT).show()
+                onStopRecording = null
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(this, "Kayıt başlatılamadı!", Toast.LENGTH_SHORT).show()
+                recorder?.release(); recorder = null
+            }
         }
     }
 
@@ -96,28 +144,16 @@ class MainActivity : AppCompatActivity() {
                 stop()
                 release()
             }
-            binding.statusText.text = "Kayıt durduruldu"
             Toast.makeText(this, "Kayıt durduruldu", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(this, "Durdurulurken hata!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Kayıt durdurulamadı", Toast.LENGTH_SHORT).show()
         } finally {
-            cleanupRecorder()
             isRecording = false
+            recorder = null
+            onStopRecording?.invoke()
+            onStopRecording = null
+            binding.statusText.text = "Kayıt bekleniyor..."
         }
-    }
-
-    private fun cleanupRecorder() {
-        recorder?.release()
-        recorder = null
-    }
-
-    override fun onDestroy() {
-        if (isRecording) {
-            // Güvenli kapatma
-            try { recorder?.stop() } catch (_: Exception) {}
-        }
-        cleanupRecorder()
-        super.onDestroy()
     }
 }
