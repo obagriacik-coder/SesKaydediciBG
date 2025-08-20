@@ -5,12 +5,7 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Environment
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
+import android.os.*
 import android.provider.MediaStore
 import android.provider.Settings
 import android.widget.Toast
@@ -21,14 +16,25 @@ import com.example.micrecorder.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileInputStream
 import java.io.OutputStream
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
-    // Servisin yazdığı geçici/özel dosya (app özel Music klasörü)
     private var currentOutputFile: File? = null
     private var isRecording = false
+
+    // Sayaç
+    private val timerHandler = Handler(Looper.getMainLooper())
+    private var startElapsed = 0L
+    private val timerTick = object : Runnable {
+        override fun run() {
+            val elapsed = SystemClock.elapsedRealtime() - startElapsed
+            binding.timerText.text = formatElapsed(elapsed)
+            timerHandler.postDelayed(this, 1000)
+        }
+    }
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ -> }
@@ -41,18 +47,20 @@ class MainActivity : AppCompatActivity() {
         requestNeededPermissions()
         checkBatteryOptimization()
 
+        // Başlangıçta ikon ve sayaç gizli
+        setRecordingUI(false)
+
         binding.startButton.setOnClickListener {
             if (isRecording) return@setOnClickListener
             startForegroundRecording()
         }
-
         binding.stopButton.setOnClickListener {
             if (!isRecording) return@setOnClickListener
             stopForegroundRecording()
         }
     }
 
-    // ---------- İzinler ----------
+    // ---- İzinler ----
     private fun requestNeededPermissions() {
         val perms = buildList {
             add(Manifest.permission.RECORD_AUDIO)
@@ -66,110 +74,101 @@ class MainActivity : AppCompatActivity() {
         permissionLauncher.launch(perms)
     }
 
-    private fun hasRecordPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this, Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-    }
+    private fun hasRecordPermission() =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
 
-    // ---------- Doze / Pil Optimizasyonu ----------
+    // ---- Doze / Pil Optimizasyonu ----
     private fun checkBatteryOptimization() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val pm = getSystemService(POWER_SERVICE) as PowerManager
-            val pkg = packageName
-            if (!pm.isIgnoringBatteryOptimizations(pkg)) {
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
                 try {
                     val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                        data = Uri.parse("package:$pkg")
+                        data = Uri.parse("package:$packageName")
                     }
                     startActivity(intent)
-                    Toast.makeText(this, "Lütfen pil optimizasyonunu kapatın", Toast.LENGTH_LONG).show()
                 } catch (_: Exception) {}
             }
         }
     }
 
-    // ---------- Kayıt Başlat/Durdur ----------
+    // ---- UI yardımcıları ----
+    private fun setRecordingUI(recording: Boolean) {
+        isRecording = recording
+        binding.recIcon.visibility = if (recording) android.view.View.VISIBLE else android.view.View.GONE
+        binding.timerText.visibility = if (recording) android.view.View.VISIBLE else android.view.View.GONE
+        if (recording) {
+            startElapsed = SystemClock.elapsedRealtime()
+            binding.timerText.text = "00:00:00"
+            timerHandler.removeCallbacksAndMessages(null)
+            timerHandler.postDelayed(timerTick, 1000)
+        } else {
+            timerHandler.removeCallbacksAndMessages(null)
+        }
+    }
+
+    private fun formatElapsed(ms: Long): String {
+        val h = TimeUnit.MILLISECONDS.toHours(ms)
+        val m = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
+        val s = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
+        return String.format("%02d:%02d:%02d", h, m, s)
+    }
+
+    // ---- Kayıt Başlat/Durdur ----
     private fun startForegroundRecording() {
         if (!hasRecordPermission()) {
             Toast.makeText(this, "Mikrofon izni gerekiyor", Toast.LENGTH_SHORT).show()
-            requestNeededPermissions()
-            return
+            requestNeededPermissions(); return
         }
 
-        // AAC/M4A için dosya adı
-        val fileName = "rec_${System.currentTimeMillis()}.m4a"
-
-        // App’in kendi Music klasörü (path verebileceğimiz güvenli alan)
+        val fileName = "rec_${System.currentTimeMillis()}.m4a" // AAC/M4A
         val base = getExternalFilesDir(Environment.DIRECTORY_MUSIC)
         val dir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
         val out = File(dir, fileName)
         currentOutputFile = out
 
-        // Java fonksiyonu: named argument YOK
-        // VOICE_RECOGNITION denemek istersen son parametreyi true yapabilirsin
         RecorderService.start(this, out.absolutePath, false)
-
-        isRecording = true
-        binding.statusText.text = "Kayıt başladı: $fileName (arka planda)"
-        Toast.makeText(this, "Kayıt başladı (ekran kilidinde de devam eder)", Toast.LENGTH_SHORT).show()
+        setRecordingUI(true) // ikon + sayaç aç
+        Toast.makeText(this, "Recording…", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopForegroundRecording() {
-        // 1) Servise Durdur talebi gönder (RecorderService stopRecording + finalize yapıyor)
         RecorderService.stop(this)
+        setRecordingUI(false) // ikon + sayaç kapat
 
-        // UI güncelle
-        isRecording = false
-        binding.statusText.text = "Kayıt durduruluyor..."
-        Toast.makeText(this, "Kayıt durduruluyor", Toast.LENGTH_SHORT).show()
-
-        // 2) Servisin dosyayı finalize etmesine küçük bir zaman tanı (UI'ı kilitlemeden)
         val src = currentOutputFile
         currentOutputFile = null
+        if (src == null) return
 
-        if (src == null) {
-            binding.statusText.text = "Kayıt bekleniyor..."
-            return
-        }
-
+        // Servisin finalize etmesi için küçük tampon, ardından dosya boyutu sabitlenmesini bekle
         Handler(Looper.getMainLooper()).postDelayed({
-            // 3) Dosyanın boyutu sabitlenene kadar bekle (moov atomu / flush güvenliği)
             waitForFileFinalized(src)
 
-            // 4) Herkese açık Music klasörüne taşı/kopyala
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
                     val publicUri = insertIntoPublicMusic(src.name)
                     if (publicUri != null) {
                         copyFileToUri(src, publicUri)
                         finalizePendingAudio(publicUri)
-                        Toast.makeText(this, "Music/SesKaydediciBG içine taşındı", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, "MediaStore eklenemedi", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Music/SesKaydediciBG'ye kaydedildi", Toast.LENGTH_SHORT).show()
                     }
-                } catch (_: Exception) {
-                    Toast.makeText(this, "Kopyalama hatası", Toast.LENGTH_SHORT).show()
-                }
+                } catch (_: Exception) { }
             } else {
                 try {
                     val base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
                     val dstDir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
                     val dst = File(dstDir, src.name)
                     src.copyTo(dst, overwrite = true)
-                    Toast.makeText(this, "Music/SesKaydediciBG içine kopyalandı", Toast.LENGTH_SHORT).show()
-                } catch (_: Exception) {}
+                } catch (_: Exception) { }
             }
-
-            binding.statusText.text = "Kayıt bekleniyor..."
-        }, /*servis finalize tamponu*/ 250)
+        }, 250)
     }
 
-    // ---------- MediaStore yardımcıları (Android 10+) ----------
+    // ---- MediaStore yardımcıları ----
     private fun insertIntoPublicMusic(displayName: String): Uri? {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-            // AAC/M4A için daha uyumlu MIME
             put(MediaStore.Audio.Media.MIME_TYPE, "audio/m4a")
             put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/SesKaydediciBG")
             put(MediaStore.Audio.Media.IS_PENDING, 1)
@@ -190,7 +189,6 @@ class MainActivity : AppCompatActivity() {
         contentResolver.update(uri, values, null, null)
     }
 
-    // ---------- Finalize bekleme: boyut iki ölçümde sabitlenene dek bekle ----------
     private fun waitForFileFinalized(f: File) {
         var last = -1L
         var same = 0
@@ -202,5 +200,10 @@ class MainActivity : AppCompatActivity() {
             try { Thread.sleep(100) } catch (_: InterruptedException) {}
         }
         try { Thread.sleep(150) } catch (_: InterruptedException) {}
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        timerHandler.removeCallbacksAndMessages(null)
     }
 }
