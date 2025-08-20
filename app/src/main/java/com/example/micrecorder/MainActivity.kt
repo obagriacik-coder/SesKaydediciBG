@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
 
         currentOutputFile = out
 
-        // 🔴 ÖNEMLİ: Java fonksiyonu olduğu için named argument YOK
+        // Java fonksiyonu: named argument yok
         RecorderService.start(this, out.absolutePath, false)
 
         isRecording = true
@@ -117,6 +117,9 @@ class MainActivity : AppCompatActivity() {
         currentOutputFile = null
 
         if (src != null) {
+            // 🔒 ÖNEMLİ: Dosyanın tamamen kapanmasını bekle (moov atomu yazılsın)
+            waitForFileFinalized(src)
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
                     val publicUri = insertIntoPublicMusic(src.name)
@@ -147,10 +150,12 @@ class MainActivity : AppCompatActivity() {
         binding.statusText.text = "Kayıt bekleniyor..."
     }
 
+    // ---- MediaStore yardımcıları (Android 10+) ----
     private fun insertIntoPublicMusic(displayName: String): Uri? {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-            put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+            // MIME'i m4a olarak yaz (bazı oynatıcılar için daha uyumlu)
+            put(MediaStore.Audio.Media.MIME_TYPE, "audio/m4a")
             put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/SesKaydediciBG")
             put(MediaStore.Audio.Media.IS_PENDING, 1)
         }
@@ -170,5 +175,25 @@ class MainActivity : AppCompatActivity() {
             put(MediaStore.Audio.Media.IS_PENDING, 0)
         }
         contentResolver.update(uri, values, null, null)
+    }
+
+    // ---- Dosya finalize bekleme: boyut sabitlenene kadar bekle + kısa gecikme ----
+    private fun waitForFileFinalized(f: File) {
+        var last = -1L
+        var sameCount = 0
+        // en fazla ~3sn bekle (30 * 100ms)
+        repeat(30) {
+            val len = f.length()
+            if (len > 0 && len == last) {
+                sameCount++
+                if (sameCount >= 2) return  // iki ardışık ölçüm aynıysa yeter
+            } else {
+                sameCount = 0
+            }
+            last = len
+            try { Thread.sleep(100) } catch (_: InterruptedException) {}
+        }
+        // ekstra küçük bir gecikme
+        try { Thread.sleep(150) } catch (_: InterruptedException) {}
     }
 }
