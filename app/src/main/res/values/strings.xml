@@ -1,20 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Ses Kaydedici BG</string>
-
-    <string name="status_idle">Kayıt bekleniyor...</string>
-    <string name="status_recording">Kayıt: DEVAM EDİYOR</string>
-    <string name="status_stopped">Kayıt: DURDU</string>
-
-    <string name="btn_start">Başlat</string>
-    <string name="btn_stop">Durdur</string>
-
-    <!-- Bildirim ve izin metinleri -->
-    <string name="notif_channel_name">Kayıt Servisi</string>
-    <string name="notif_channel_desc">Arka planda ses kaydı</string>
-    <string name="notif_title">Ses Kaydı</string>
-    <string name="notif_text">Kayıt devam ediyor…</string>
-
-    <!-- Alt yazı -->
-    <string name="footer_text">BGRCK YAZILIM</string>
+    <string name="app_name">Ses Kaydedici</string>
+    <string name="untitled">Recorder icon</string>
 </resources>
