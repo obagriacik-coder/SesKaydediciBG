@@ -1,50 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- İZİNLER -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- İzinler -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Android 12+ foreground service bildirimi -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
 
-    <!-- Android 10+ (Q) sonrası için foreground servis -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-
-    <!-- Android 13+ (Tiramisu) izinleri -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-
-    <!-- Android 9 ve altı için eski depolama izinleri -->
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-
-    <!-- Mikrofon zorunluysa belirtmek iyi olur -->
-    <uses-feature
-        android:name="android.hardware.microphone"
-        android:required="true" />
+    <!-- Eski cihazlar (Android 9 ve altı) için – app özel klasöre yazarken gerekmez ama zarar da vermez -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
 
     <application
         android:allowBackup="true"
-        android:label="@string/app_name"
+        android:label="Ses Kaydedici"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.Material3.Dark.NoActionBar"
-        android:requestLegacyExternalStorage="true">
+        android:roundIcon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
 
-        <!-- LAUNCHER ACTIVITY -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <!-- SES KAYIT SERVİSİ -->
         <service
             android:name=".RecorderService"
             android:exported="false"
