@@ -40,12 +40,17 @@ public class RecorderService extends Service {
         ctx.startService(i);
     }
 
-    @Override public void onCreate() { super.onCreate(); createChannel(this); }
+    @Override public void onCreate() {
+        super.onCreate();
+        createChannel(this);
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 🔒 Durdurma talebi geldiyse önce kaydı düzgün finalize et
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            stopSelf();
+            stopRecording();          // moov atomu yazılsın
+            stopSelf();               // sonra servisi kapat
             return START_NOT_STICKY;
         }
 
@@ -66,10 +71,13 @@ public class RecorderService extends Service {
 
     @Nullable @Override public IBinder onBind(Intent intent) { return null; }
 
-    @Override public void onDestroy() { super.onDestroy(); stopRecording(); }
+    @Override public void onDestroy() {
+        super.onDestroy();
+        stopRecording(); // güvene al
+    }
 
     private void startRecording(@Nullable String outputPath, boolean useVoiceRecognition) {
-        stopRecording();
+        stopRecording(); // varsa önceki oturumu kapat
 
         recorder = new MediaRecorder();
 
@@ -81,17 +89,12 @@ public class RecorderService extends Service {
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         }
 
-        // ✅ Evrensel çalışacak ayar: MPEG_4 + AAC (96 kbps, 44.1 kHz)
+        // ✅ AAC/M4A — yüksek uyumluluk + kalite
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        recorder.setAudioEncodingBitRate(96_000);   // 96 kbps
-        recorder.setAudioSamplingRate(44_100);      // 44.1 kHz
-
-        // Eğer illa .3gp uyumu istiyorsan, yukarıdakini kapatıp şunu açarsın:
-        /*
-        recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-        */
+        recorder.setAudioEncodingBitRate(96_000);  // 96 kbps
+        recorder.setAudioSamplingRate(44_100);     // 44.1 kHz
+        // (AMR_NB/3GP istersen yukarıyı yorumlayıp THREE_GPP + AMR_NB yaparsın)
 
         if (outputPath != null) recorder.setOutputFile(outputPath);
 
@@ -100,15 +103,27 @@ public class RecorderService extends Service {
             recorder.start();
         } catch (Exception e) {
             e.printStackTrace();
+            stopRecording();
             stopSelf();
         }
     }
 
+    // 🔧 Finalize garantili durdurma
     private void stopRecording() {
-        if (recorder != null) {
-            try { recorder.stop(); } catch (Exception ignored) {}
-            try { recorder.reset(); recorder.release(); } catch (Exception ignored) {}
-            recorder = null;
+        MediaRecorder r = recorder;
+        recorder = null; // başka yerden erişilip state bozulmasın
+
+        if (r != null) {
+            try {
+                r.stop(); // bazı cihazlarda IllegalStateException atabilir
+            } catch (Throwable ignored) {
+                // stop() başarısız olsa da release mutlaka denenecek
+            } finally {
+                try { r.reset(); }   catch (Throwable ignored) {}
+                try { r.release(); } catch (Throwable ignored) {}
+            }
+            // moov yazımı için minik nefes
+            try { android.os.SystemClock.sleep(150); } catch (Throwable ignored) {}
         }
     }
 
