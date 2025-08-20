@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,8C29.6,8 10,27.6 10,52c0,24.4 19.6,44 44,44s44,-19.6 44,-44C98,27.6 78.4,8 54,8zM54,90
+            c-21,0 -38,-17 -38,-38s17,-38 38,-38 38,17 38,38 -17,38 -38,38z" />
+
+    <!-- Mikrofon ikonu -->
+    <path
+        android:fillColor="#1DB954"
+        android:pathData="M54,30c-4.4,0 -8,3.6 -8,8v20c0,4.4 3.6,8 8,8s8,-3.6 8,-8V38C62,33.6 58.4,30 54,30zM70,56
+            c0,8.8 -7.2,16 -16,16s-16,-7.2 -16,-16h-4c0,10.4 8.4,19 19,20v8h-8v6h20v-6h-8v-8c10.6,-1 19,-9.6 19,-20H70z" />
+
+</vector>
