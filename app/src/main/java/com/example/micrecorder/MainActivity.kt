@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
             requestNeededPermissions(); return
         }
 
-        val fileName = "rec_${System.currentTimeMillis()}.3gp" // ← mp3 yerine EVRENSEL 3gp
+        val fileName = "rec_${System.currentTimeMillis()}.m4a" // AAC/M4A
         val base = getExternalFilesDir(Environment.DIRECTORY_MUSIC)
         val dir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
         val out = File(dir, fileName)
@@ -112,7 +112,8 @@ class MainActivity : AppCompatActivity() {
         currentOutputFile = null
 
         if (src != null) {
-            waitForFileFinalized(src) // dosya tamamen kapansın
+            // MP4/M4A'da moov atomu için kapanmayı bekle
+            waitForFileFinalized(src)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
@@ -144,7 +145,8 @@ class MainActivity : AppCompatActivity() {
     private fun insertIntoPublicMusic(displayName: String): Uri? {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-            put(MediaStore.Audio.Media.MIME_TYPE, "audio/3gpp") // ← 3gp mime
+            // M4A için daha uyumlu MIME
+            put(MediaStore.Audio.Media.MIME_TYPE, "audio/m4a")
             put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/SesKaydediciBG")
             put(MediaStore.Audio.Media.IS_PENDING, 1)
         }
@@ -164,7 +166,7 @@ class MainActivity : AppCompatActivity() {
         contentResolver.update(uri, values, null, null)
     }
 
-    // Dosya kapanmasını bekle (moov yok ama güvenli kapanış için boyut sabitlenmesini bekliyoruz)
+    // Dosya kapanmasını bekle: boyut iki kez üst üste sabitse tamam
     private fun waitForFileFinalized(f: File) {
         var last = -1L
         var same = 0
