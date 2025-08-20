@@ -3,7 +3,6 @@ package com.example.micrecorder;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -82,11 +81,17 @@ public class RecorderService extends Service {
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         }
 
-        // 🔒 Evrensel uyumluluk: 3GP + AMR_NB
+        // ✅ Evrensel çalışacak ayar: MPEG_4 + AAC (96 kbps, 44.1 kHz)
+        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        recorder.setAudioEncodingBitRate(96_000);   // 96 kbps
+        recorder.setAudioSamplingRate(44_100);      // 44.1 kHz
+
+        // Eğer illa .3gp uyumu istiyorsan, yukarıdakini kapatıp şunu açarsın:
+        /*
         recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-
-        // Not: AMR_NB’de sampleRate/bitrate set etme — varsayılanlar en uyumlusu
+        */
 
         if (outputPath != null) recorder.setOutputFile(outputPath);
 
