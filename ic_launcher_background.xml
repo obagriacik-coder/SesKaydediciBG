@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#FFFFFF"/> <!-- Arka plan rengi (beyaz) -->
+    <solid android:color="#3DDC84"/>   <!-- Arka plan rengi (Android yeşili) -->
 </shape>
