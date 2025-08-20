@@ -116,9 +116,7 @@ public class RecorderService extends Service {
 
     private void stopRecording() {
         if (recorder != null) {
-            try {
-                recorder.stop();
-            } catch (Exception ignored) {}
+            try { recorder.stop(); } catch (Exception ignored) {}
             try {
                 recorder.reset();
                 recorder.release();
