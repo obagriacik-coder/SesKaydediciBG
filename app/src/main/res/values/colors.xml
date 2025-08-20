@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Varsayılan renkler -->
+    <!-- Varsayılan renkler (varsa kalsın) -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
@@ -9,7 +9,13 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Uygulama için eklenen özel renkler -->
-    <color name="rec_green">#2E7D32</color> <!-- Start butonu için -->
-    <color name="rec_red">#C62828</color>   <!-- Stop butonu için -->
+    <!-- Uygulama için özel renkler -->
+    <color name="rec_green">#2E7D32</color>  <!-- Start butonu -->
+    <color name="rec_red">#C62828</color>    <!-- Stop butonu -->
+
+    <!-- Eski drawable'ların referans verdiği renk adları (derleme hatasını giderir) -->
+    <color name="success">#2E7D32</color>
+    <color name="success_dark">#1B5E20</color>
+    <color name="danger">#C62828</color>
+    <color name="danger_dark">#8E0000</color>
 </resources>
