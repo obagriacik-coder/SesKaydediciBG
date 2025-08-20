@@ -2,12 +2,15 @@ package com.example.micrecorder
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.PowerManager
 import android.provider.MediaStore
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -34,6 +37,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         requestNeededPermissions()
+        checkBatteryOptimization()  // Doze istisnası iste
 
         binding.startButton.setOnClickListener {
             if (isRecording) return@setOnClickListener
@@ -64,6 +68,25 @@ class MainActivity : AppCompatActivity() {
         return ContextCompat.checkSelfPermission(
             this, Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    // ---- Doze / Pil Optimizasyonu ----
+    private fun checkBatteryOptimization() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = getSystemService(POWER_SERVICE) as PowerManager
+            val pkg = packageName
+            if (!pm.isIgnoringBatteryOptimizations(pkg)) {
+                try {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$pkg")
+                    }
+                    startActivity(intent)
+                    Toast.makeText(this, "Lütfen pil optimizasyonunu kapatın", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
     }
 
     // ---- Kayıt Başlat/Durdur (Foreground Service) ----
