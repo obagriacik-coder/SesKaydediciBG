@@ -41,7 +41,6 @@ class MainActivity : AppCompatActivity() {
             if (isRecording) return@setOnClickListener
             startForegroundRecording()
         }
-
         binding.stopButton.setOnClickListener {
             if (!isRecording) return@setOnClickListener
             stopForegroundRecording()
@@ -78,9 +77,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     startActivity(intent)
                     Toast.makeText(this, "Lütfen pil optimizasyonunu kapatın", Toast.LENGTH_LONG).show()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                } catch (_: Exception) {}
             }
         }
     }
@@ -88,23 +85,21 @@ class MainActivity : AppCompatActivity() {
     private fun startForegroundRecording() {
         if (!hasRecordPermission()) {
             Toast.makeText(this, "Mikrofon izni gerekiyor", Toast.LENGTH_SHORT).show()
-            requestNeededPermissions()
-            return
+            requestNeededPermissions(); return
         }
 
-        val fileName = "rec_${System.currentTimeMillis()}.m4a"
+        val fileName = "rec_${System.currentTimeMillis()}.3gp" // ← mp3 yerine EVRENSEL 3gp
         val base = getExternalFilesDir(Environment.DIRECTORY_MUSIC)
         val dir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
         val out = File(dir, fileName)
-
         currentOutputFile = out
 
-        // Java fonksiyonu: named argument yok
+        // Java fonksiyonu: named arg yok
         RecorderService.start(this, out.absolutePath, false)
 
         isRecording = true
-        binding.statusText.text = "Kayıt başladı: $fileName (arka planda sürüyor)"
-        Toast.makeText(this, "Kayıt başladı (ekran kilidinde de devam eder)", Toast.LENGTH_SHORT).show()
+        binding.statusText.text = "Kayıt başladı: $fileName (arka planda)"
+        Toast.makeText(this, "Kayıt başladı (kilitte de devam eder)", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopForegroundRecording() {
@@ -117,8 +112,7 @@ class MainActivity : AppCompatActivity() {
         currentOutputFile = null
 
         if (src != null) {
-            // 🔒 ÖNEMLİ: Dosyanın tamamen kapanmasını bekle (moov atomu yazılsın)
-            waitForFileFinalized(src)
+            waitForFileFinalized(src) // dosya tamamen kapansın
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
@@ -126,12 +120,11 @@ class MainActivity : AppCompatActivity() {
                     if (publicUri != null) {
                         copyFileToUri(src, publicUri)
                         finalizePendingAudio(publicUri)
-                        Toast.makeText(this, "Müzik/SesKaydediciBG içine taşındı", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Music/SesKaydediciBG içine taşındı", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this, "MediaStore eklenemedi", Toast.LENGTH_SHORT).show()
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                } catch (_: Exception) {
                     Toast.makeText(this, "Kopyalama hatası", Toast.LENGTH_SHORT).show()
                 }
             } else {
@@ -140,22 +133,18 @@ class MainActivity : AppCompatActivity() {
                     val dstDir = File(base, "SesKaydediciBG").apply { if (!exists()) mkdirs() }
                     val dst = File(dstDir, src.name)
                     src.copyTo(dst, overwrite = true)
-                    Toast.makeText(this, "Müzik/SesKaydediciBG içine kopyalandı", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                    Toast.makeText(this, "Music/SesKaydediciBG içine kopyalandı", Toast.LENGTH_SHORT).show()
+                } catch (_: Exception) {}
             }
         }
-
         binding.statusText.text = "Kayıt bekleniyor..."
     }
 
-    // ---- MediaStore yardımcıları (Android 10+) ----
+    // ---- MediaStore helpers (Android 10+) ----
     private fun insertIntoPublicMusic(displayName: String): Uri? {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-            // MIME'i m4a olarak yaz (bazı oynatıcılar için daha uyumlu)
-            put(MediaStore.Audio.Media.MIME_TYPE, "audio/m4a")
+            put(MediaStore.Audio.Media.MIME_TYPE, "audio/3gpp") // ← 3gp mime
             put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/SesKaydediciBG")
             put(MediaStore.Audio.Media.IS_PENDING, 1)
         }
@@ -171,29 +160,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun finalizePendingAudio(uri: Uri) {
-        val values = ContentValues().apply {
-            put(MediaStore.Audio.Media.IS_PENDING, 0)
-        }
+        val values = ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }
         contentResolver.update(uri, values, null, null)
     }
 
-    // ---- Dosya finalize bekleme: boyut sabitlenene kadar bekle + kısa gecikme ----
+    // Dosya kapanmasını bekle (moov yok ama güvenli kapanış için boyut sabitlenmesini bekliyoruz)
     private fun waitForFileFinalized(f: File) {
         var last = -1L
-        var sameCount = 0
-        // en fazla ~3sn bekle (30 * 100ms)
+        var same = 0
         repeat(30) {
             val len = f.length()
-            if (len > 0 && len == last) {
-                sameCount++
-                if (sameCount >= 2) return  // iki ardışık ölçüm aynıysa yeter
-            } else {
-                sameCount = 0
-            }
+            if (len > 0 && len == last) { same++; if (same >= 2) return }
+            else same = 0
             last = len
             try { Thread.sleep(100) } catch (_: InterruptedException) {}
         }
-        // ekstra küçük bir gecikme
         try { Thread.sleep(150) } catch (_: InterruptedException) {}
     }
 }
