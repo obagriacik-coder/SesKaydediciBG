@@ -1,41 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#111318">
 
-    <!-- Recorder amblemi (kayıt sırasında görünür) -->
-    <ImageView
-        android:id="@+id/recIcon"
-        android:layout_width="88dp"
-        android:layout_height="88dp"
-        android:visibility="gone"
-        android:contentDescription="@string/untitled"
-        android:tint="@android:color/white"
-        android:src="@android:drawable/ic_btn_speak_now"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="48dp" />
-
-    <!-- Sayaç (00:00:00) - ikonun TAM ÜSTÜNDE -->
+    <!-- Sayaç: İKONUN ÜSTÜNDE (kayıtta görünür) -->
     <TextView
         android:id="@+id/timerText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
         android:text="00:00:00"
-        android:textSize="28sp"
+        android:textSize="32sp"
         android:textStyle="bold"
         android:textColor="@android:color/white"
-        app:layout_constraintBottom_toBottomOf="@id/recIcon"
-        app:layout_constraintStart_toStartOf="@id/recIcon"
-        app:layout_constraintEnd_toEndOf="@id/recIcon"
-        app:layout_constraintTop_toTopOf="@id/recIcon" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="40dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/recIcon"
+        android:layout_marginBottom="12dp" />
 
-    <!-- Start (yeşil) -->
+    <!-- Recorder amblemi: @drawable/rec_logo (kayıtta görünür) -->
+    <ImageView
+        android:id="@+id/recIcon"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:visibility="gone"
+        android:src="@drawable/rec_logo"
+        android:contentDescription="@string/untitled"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="84dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Marka yazısı: en altta sabit -->
+    <TextView
+        android:id="@+id/brandText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/brand_footer"
+        android:textColor="#9FA4AA"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="12dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Start (yeşil): marka yazısının hemen üstünde -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/startButton"
         style="@style/Widget.MaterialComponents.Button"
@@ -46,16 +60,16 @@
         android:textStyle="bold"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="12dp"
-        android:layout_marginBottom="36dp"
+        android:layout_marginBottom="64dp"
         app:cornerRadius="28dp"
         app:backgroundTint="@color/rec_green"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/stopButton"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/brandText"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintHorizontal_chainStyle="packed" />
 
-    <!-- Stop (kırmızı) -->
+    <!-- Stop (kırmızı): Start ile aynı hizada -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/stopButton"
         style="@style/Widget.MaterialComponents.Button"
@@ -66,12 +80,12 @@
         android:textStyle="bold"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="24dp"
-        android:layout_marginBottom="36dp"
+        android:layout_marginBottom="64dp"
         app:cornerRadius="28dp"
         app:backgroundTint="@color/rec_red"
         app:layout_constraintStart_toEndOf="@id/startButton"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/brandText"
         app:layout_constraintHorizontal_weight="1" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
